@@ -113,7 +113,7 @@ void ProfileDialog::drawPlotContent(QPainter *p, int width, int height) {
     int laneHeight = height / nLanes;
     if (laneHeight < 2) laneHeight = 2;
 
-    double xScale = static_cast<double>(width) / (m_profiles[0].size() - 1);
+    double xScale = static_cast<double>(width) / (m_profiles[0].size());
     double yRange = m_max - m_min;
     if (yRange == 0.0) yRange = 1.0;
     double yScale = static_cast<double>(laneHeight) / yRange;
@@ -130,8 +130,8 @@ void ProfileDialog::drawPlotContent(QPainter *p, int width, int height) {
         if (!profile.empty()) {
             QPolygon curvePoly;
             for (size_t j = 0; j < profile.size(); ++j) {
-                int x = static_cast<int>(j * xScale);
-                int y = baseY - static_cast<int>((profile[j] - m_min) * yScale);
+                int x = static_cast<int>(j * xScale + 0.5);
+                int y = baseY - static_cast<int>((profile[j] - m_min) * yScale + 0.5);
                 curvePoly << QPoint(x, y);
             }
             p->drawPolyline(curvePoly);

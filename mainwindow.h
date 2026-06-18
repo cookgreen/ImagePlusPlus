@@ -7,7 +7,7 @@
 #include <QList>
 #include <opencv2/core.hpp>
 
-#include "ProfilePlot.h"
+#include "GelAnalyzer.h"
 
 class LaneGraphicsView;
 class QLabel;
@@ -21,7 +21,6 @@ public:
 private slots:
     void openImage();
     void analyze();
-    std::vector<double> calculateOD(const std::vector<double>& profile);
 
 private:
     LaneGraphicsView *view;
@@ -29,10 +28,6 @@ private:
     QList<QGraphicsRectItem*> lanes; // 保存泳道矩形
     cv::Mat cvImage;                 // OpenCV 原图
     QImage qtImage;                  // Qt 显示用图
-    double odMin;
-    double odMax;
-    bool invertPeaks;
-    bool uncalibratedOD;
 };
 
 #endif

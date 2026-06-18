@@ -77,35 +77,12 @@ void MainWindow::analyze() {
 
     cv::Mat processedMat = cvImage.clone();
 
-    // 转为单通道灰度图
-    if (processedMat.channels() > 1) {
-        cv::cvtColor(processedMat, processedMat, cv::COLOR_BGR2GRAY);
-    }
-
-    if (uncalibratedOD && processedMat.depth() != CV_8U) {
-        cv::normalize(processedMat, processedMat, 0, 255, cv::NORM_MINMAX, CV_8U);
-    }
-
-    // 对应: if (invertPeaks) ip2.invert();
-    if (invertPeaks) {
-        // 只有 8位图 反相才有 255-x 的物理意义
-        if (processedMat.depth() == CV_8U) {
-            cv::bitwise_not(processedMat, processedMat);
-        }
-    }
-
-    std::vector<std::vector<double>> allProfiles;
     double globalMin = std::numeric_limits<double>::max();
     double globalMax = -std::numeric_limits<double>::max();
 
-    // 重置全局 OD 极值 (假设 odMin, odMax 是 MainWindow 的成员变量)
-    if (uncalibratedOD) {
-        odMin = std::numeric_limits<double>::max();
-        odMax = -std::numeric_limits<double>::max();
-    }
+    int pixelsAveraged = 1;
 
-    int pixelsAveraged = 1; // 记录泳道厚度
-
+    std::vector<cv::Rect> roi_list;
     for (const QGraphicsRectItem *item : lanes) {
         QRectF rf = item->rect();
 
@@ -115,49 +92,19 @@ void MainWindow::analyze() {
 
         pixelsAveraged = averageHorizontally ? cvRoi.width : cvRoi.height;
 
-        ProfilePlot plot(processedMat, cvRoi, averageHorizontally);
-        std::vector<double> profile = plot.getProfile();
-
-        if (profile.empty()) continue;
-
-        if (uncalibratedOD) {
-            profile = calculateOD(profile);
-        }
-
-        auto minmax = std::minmax_element(profile.begin(), profile.end());
-        if (*minmax.first < globalMin) globalMin = *minmax.first;
-        if (*minmax.second > globalMax) globalMax = *minmax.second;
-
-        allProfiles.push_back(profile);
+        roi_list.push_back(cvRoi);
     }
 
-    if (allProfiles.empty()) {
-        QMessageBox::warning(this, "Warning", "No valid lane data.");
-        return;
-    }
+    GelAnalyzer gelAnalyzer;
+    std::vector<std::vector<double>> allProfiles = gelAnalyzer.plotLanes(
+        processedMat, roi_list, globalMin, globalMax);
 
-    if (uncalibratedOD) {
-        globalMin = odMin;
-        globalMax = odMax;
+    if (gelAnalyzer.uncalibratedOD)
+    {
+        globalMin = gelAnalyzer.odMin;
+        globalMax = gelAnalyzer.odMax;
     }
 
     ProfileDialog dlg(allProfiles, globalMin, globalMax, pixelsAveraged, this);
     dlg.exec();
-}
-
-std::vector<double> MainWindow::calculateOD(const std::vector<double>& profile) {
-    std::vector<double> odProfile(profile.size());
-
-    for (size_t i = 0; i < profile.size(); ++i) {
-        double pixelValue = std::min(profile[i], 254.999);
-
-        double v = 0.434294481 * std::log(255.0 / (255.0 - pixelValue));
-
-        if (v < odMin) odMin = v;
-        if (v > odMax) odMax = v;
-
-        odProfile[i] = v;
-    }
-
-    return odProfile;
 }
